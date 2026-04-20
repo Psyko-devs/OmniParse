@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include <string_view>
 
 enum class TokenType {
     CURLY_OPEN,    // {
@@ -13,7 +14,7 @@ enum class TokenType {
 
 struct Token{
     TokenType type;
-    std::string text;
+    std::string_view text;
 };
 
 
@@ -83,23 +84,30 @@ public:
                 tokens.push_back({TokenType::COMMA, ","});
             }
 
-            // 3. Handle Strings (We will do this next!)
+            // 3. Handle Strings
             else if(c == '"'){
-                std::string temp = "";
                 advance();
+                size_t startPos = pos;
                 while(peek() != '"' && !isAtEnd()){
-                    temp += advance();
+                    advance();
                 }
+                size_t length = pos - startPos;
+                std::string_view myView = std::string_view(src).substr(startPos, length);
+
                 advance();
-                tokens.push_back({TokenType::STRING, temp});
+                tokens.push_back({TokenType::STRING, myView});
             }
-            // 4. Handle Numbers (We will do this next!)
+            // 4. Handle Numbers 
             else if(std::isdigit(c) || c == '-'){
-                std::string temp = "";
+                size_t startPos = pos;
+
+                if(peek() == '-') advance();
                 while(!isAtEnd() && (std::isdigit(peek()) || peek() == '.')){
-                    temp += advance();
+                    advance();
                 }
-                tokens.push_back({TokenType::NUMBER, temp});
+                size_t length = pos - startPos;
+                std::string_view myView = std::string_view(src).substr(startPos, length);
+                tokens.push_back({TokenType::NUMBER, myView});
             }
             // Temporary fail-safe so we don't infinite loop while building:
             else {

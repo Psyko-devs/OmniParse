@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -O2
+CXXFLAGS := -std=c++1z -Wall -Wextra -pedantic -O2
 
 TARGET := omniparse
 SRCS := $(wildcard *.cpp)

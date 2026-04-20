@@ -32,12 +32,12 @@ public:
 
         if (current.type == TokenType::STRING) {
             advance(); // Consume the token
-            return std::make_unique<JsonString>(current.text);
+            return std::make_unique<JsonString>(std::string(current.text));
         }
         else if (current.type == TokenType::NUMBER) {
             advance(); // Consume the token
             // std::stod converts a std::string to a double!
-            return std::make_unique<JsonNumber>(std::stod(current.text));
+            return std::make_unique<JsonNumber>(std::stod(std::string(current.text)));
         }
         else if (current.type == TokenType::BRACKET_OPEN) {
             return parseArray(); // We will write this next
@@ -46,7 +46,7 @@ public:
             return parseObject(); // We will write this next
         }
 
-        throw std::runtime_error("Parser Error: Unexpected token " + current.text);
+        throw std::runtime_error("Parser Error: Unexpected token " + std::string(current.text));
     }
 
     // Helper method to parse Arrays
@@ -75,10 +75,10 @@ public:
         advance();
         auto objNode = std::make_unique<JsonObject>();
         while(peek().type != TokenType::CURLY_CLOSE && !isAtEnd()){
-            std::string key = peek().text;
+            std::string_view key = peek().text;
             advance();
             advance();
-            objNode->add(key, parseValue());
+            objNode->add(std::string(key), parseValue());
             if(peek().type == TokenType::COMMA){
                 advance();
             }
