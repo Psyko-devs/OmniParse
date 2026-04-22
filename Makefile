@@ -19,4 +19,4 @@ run: all
 	./$(TARGET).exe
 
 clean:
-	rm -f $(OBJS) $(TARGET).exe
+	del /Q *.o *.exe 2>nul || true

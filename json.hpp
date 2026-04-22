@@ -47,12 +47,12 @@ public:
 class JsonArray : public JsonNode {
 private:
     // This vector exclusively owns whatever nodes are inside it!
-    std::vector<std::unique_ptr<JsonNode>> elements;
+    std::vector<JsonNode*> elements;
 
 public:
     // 1. Write an 'add' method that takes a unique_ptr<JsonNode> and std::move's it into the vector.
-    void add(std::unique_ptr<JsonNode> element){
-        elements.push_back(std::move(element));
+    void add(JsonNode* element){
+        elements.push_back(element);
     }
     // 2. Override the print() method! 
     // It needs to return a string that looks like this: "[ item1, item2, item3 ]"
@@ -76,12 +76,12 @@ public:
 class JsonObject : public JsonNode {
 private:
     // The dictionary mapping strings to polymorphic nodes
-    std::unordered_map<std::string, std::unique_ptr<JsonNode>> map;
+    std::unordered_map<std::string, JsonNode*> map;
 
 public:
     // 1. Write the add() method. Use std::move() again!
-    void add(const std::string& key, std::unique_ptr<JsonNode> value) {
-        map[key] = std::move(value);
+    void add(const std::string& key, JsonNode* value) {
+        map[key] = value;
     }
 
     // 2. Override print(). Format must be: { "key1": value1, "key2": value2 }

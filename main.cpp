@@ -1,8 +1,10 @@
 #include "parser.hpp"
+#include "lexer.hpp"
+#include "json.hpp"
+#include "arena.hpp"
 #include <chrono>
 
-// Test/benchmark code (kept for reference but not used as main)
-void benchmark_parser() {
+int main() {
     std::string baseJson = R"({ "project": "OmniParse", "version": 1.0, "modules": [ "AST", "Lexer", "Parser" ] })";
     
     // Simulate a massive 20MB JSON file
@@ -21,11 +23,18 @@ void benchmark_parser() {
 
     Lexer lexer(rawJson);
     std::vector<Token> tokens = lexer.tokenize();
+    
+    // --- THE NEW ARENA ENGINE ---
+    ArenaAllocator arena; // Starts with a 64KB page
+    Parser parser(tokens, arena); // Pass the engine to the parser
+    JsonNode* astRoot = parser.parseValue();
 
     // --- STOP TIMING ---
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = finish - start;
 
-    std::cout << "Lexer Status: SUCCESS. Generated " << tokens.size() << " tokens." << std::endl;
-    std::cout << "Lexer Time: " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "Engine Status: SUCCESS. Parsed " << tokens.size() << " tokens." << std::endl;
+    std::cout << "Total Time (Lexer + Parser): " << elapsed.count() << " milliseconds." << std::endl;
+
+    return 0;
 }

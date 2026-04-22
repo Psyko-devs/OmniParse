@@ -1,10 +1,12 @@
 #include "json.hpp"
 #include "lexer.hpp"
+#include "arena.hpp"
 
 class Parser {
 private:
     std::vector<Token> tokens; // The list we got from the Lexer
     size_t pos;                // Our cursor pointing to the current Token
+    ArenaAllocator& arena;
 
     bool isAtEnd() const {
         return pos >= tokens.size();
@@ -21,23 +23,21 @@ private:
     }
 
 public:
-    Parser(const std::vector<Token>& lexerTokens) {
-        tokens = lexerTokens;
-        pos = 0;
-    }
+    Parser(const std::vector<Token>& lexerTokens, ArenaAllocator& allocator) 
+    : tokens(lexerTokens), pos(0), arena(allocator) {}
 
     // This is the master function that builds the tree!
-    std::unique_ptr<JsonNode> parseValue() {
+    JsonNode* parseValue() {
         Token current = peek();
 
         if (current.type == TokenType::STRING) {
             advance(); // Consume the token
-            return std::make_unique<JsonString>(std::string(current.text));
+            return arena.create<JsonString>(std::string(current.text));
         }
         else if (current.type == TokenType::NUMBER) {
             advance(); // Consume the token
             // std::stod converts a std::string to a double!
-            return std::make_unique<JsonNumber>(std::stod(std::string(current.text)));
+            return arena.create<JsonNumber>(std::stod(std::string(current.text)));
         }
         else if (current.type == TokenType::BRACKET_OPEN) {
             return parseArray(); // We will write this next
@@ -50,11 +50,11 @@ public:
     }
 
     // Helper method to parse Arrays
-    std::unique_ptr<JsonNode> parseArray() {
+    JsonNode* parseArray() {
         Token current = peek();
         if(current.type == TokenType::BRACKET_OPEN){
             advance();
-            auto arrayNode = std::make_unique<JsonArray>();
+            JsonArray* arrayNode = arena.create<JsonArray>();
             while(peek().type != TokenType::BRACKET_CLOSE && !isAtEnd()){
                 arrayNode->add(parseValue());
                 if(peek().type == TokenType::COMMA){
@@ -71,9 +71,9 @@ public:
         
 
     // Helper method to parse Objects
-    std::unique_ptr<JsonNode> parseObject() {
+    JsonNode* parseObject() {
         advance();
-        auto objNode = std::make_unique<JsonObject>();
+        JsonObject* objNode = arena.create<JsonObject>();
         while(peek().type != TokenType::CURLY_CLOSE && !isAtEnd()){
             std::string_view key = peek().text;
             advance();
