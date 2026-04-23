@@ -95,8 +95,9 @@ public:
                 }
                 size_t length = pos - startPos;
                 std::string_view myView = std::string_view(src).substr(startPos, length);
-
-                advance();
+                if(!isAtEnd()){
+                    advance();
+                }
                 tokens.push_back({TokenType::STRING, myView});
             }
             // 4. Handle Numbers 
@@ -113,8 +114,7 @@ public:
             }
             // Temporary fail-safe so we don't infinite loop while building:
             else {
-                std::cout << "Lexer error: Unknown character '" << c << "'" << std::endl;
-                advance(); 
+                throw std::runtime_error(std::string("Lexer error: Unknown character '") + c + "'");
             }
         }
 

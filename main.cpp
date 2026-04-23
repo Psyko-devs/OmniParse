@@ -1,40 +1,76 @@
-#include "parser.hpp"
+#include <iostream>
+#include <string>
+#include <vector>
+#include <random>
+
 #include "lexer.hpp"
-#include "json.hpp"
+#include "parser.hpp"
 #include "arena.hpp"
-#include <chrono>
+
+// 1. EL GENERADOR DE CAOS
+std::string generateGarbage(size_t length) {
+    // Estos son los caracteres que más confunden a los parsers
+    const std::string charset = "{}[],\":-123.abc\\\" \n\t"; 
+    std::string result;
+    result.reserve(length);
+
+    // Herramientas modernas de C++ para números aleatorios
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, charset.size() - 1);
+
+    // TU MISIÓN PARTE 1:
+    // Escribe un bucle que se ejecute 'length' veces.
+    // En cada iteración, elige un carácter aleatorio de 'charset' usando distrib(gen)
+    // y añádelo a 'result'.
+    for(size_t i = 0; i < length; i++){
+        char car = charset[distrib(gen)];
+        result += car;
+    }
+
+    return result;
+}
 
 int main() {
-    std::string baseJson = R"({ "project": "OmniParse", "version": 1.0, "modules": [ "AST", "Lexer", "Parser" ] })";
+    std::cout << "--- INICIANDO FUZZER DE CAOS OMNIPARSE ---" << std::endl;
     
-    // Simulate a massive 20MB JSON file
-    std::cout << "Generating massive payload..." << std::endl;
-    std::string rawJson = "[";
-    for(int i = 0; i < 100000; i++) {
-        rawJson += baseJson;
-        if (i < 99999) rawJson += ",";
+    int successCount = 0;
+    const int TOTAL_ROUNDS = 10000;
+
+    for (int i = 0; i < TOTAL_ROUNDS; i++) {
+        // Generamos un string de longitud aleatoria (entre 1 y 500 caracteres)
+        std::string garbage = generateGarbage(rand() % 500 + 1);
+
+        try {
+            ArenaAllocator arena;
+            Lexer lexer(garbage);
+            std::vector<Token> tokens = lexer.tokenize();
+            
+            Parser parser(tokens, arena);
+            JsonNode* astRoot = parser.parseValue();
+            
+            // Si llega aquí, significa que, por un milagro estadístico, 
+            // el Fuzzer generó un JSON válido, o... hay un falso positivo.
+            
+        } catch (const std::exception& e) {
+            // ¡ESTO ES LO QUE QUEREMOS! 
+            // El motor detectó la basura y abortó de forma segura.
+            successCount++;
+        } catch (...) {
+            // Si atrapamos algo que no es un runtime_error, el motor colapsó gravemente.
+            std::cerr << "\n[!] FALLO CATASTRÓFICO EN LA RONDA " << i << std::endl;
+            std::cerr << "Payload que mató al motor: " << garbage << std::endl;
+            return 1; 
+        }
+
+        // Imprimir progreso en la misma línea
+        if (i % 1000 == 0) {
+            std::cout << "Rondas completadas: " << i << " / " << TOTAL_ROUNDS << "\r" << std::flush;
+        }
     }
-    rawJson += "]";
 
-    std::cout << "Payload Size: " << rawJson.length() / 1024 / 1024 << " MB" << std::endl;
-
-    // --- START TIMING ---
-    auto start = std::chrono::high_resolution_clock::now();
-
-    Lexer lexer(rawJson);
-    std::vector<Token> tokens = lexer.tokenize();
-    
-    // --- THE NEW ARENA ENGINE ---
-    ArenaAllocator arena; // Starts with a 64KB page
-    Parser parser(tokens, arena); // Pass the engine to the parser
-    JsonNode* astRoot = parser.parseValue();
-
-    // --- STOP TIMING ---
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> elapsed = finish - start;
-
-    std::cout << "Engine Status: SUCCESS. Parsed " << tokens.size() << " tokens." << std::endl;
-    std::cout << "Total Time (Lexer + Parser): " << elapsed.count() << " milliseconds." << std::endl;
+    std::cout << "\n\n[+] PRUEBA DE ESTRÉS COMPLETADA." << std::endl;
+    std::cout << "Supervivencia: " << successCount << " / " << TOTAL_ROUNDS << " cargas neutralizadas." << std::endl;
 
     return 0;
 }

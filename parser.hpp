@@ -2,6 +2,8 @@
 #include "lexer.hpp"
 #include "arena.hpp"
 
+const int MAX_DEPTH = 512;
+
 class Parser {
 private:
     std::vector<Token> tokens; // The list we got from the Lexer
@@ -27,7 +29,14 @@ public:
     : tokens(lexerTokens), pos(0), arena(allocator) {}
 
     // This is the master function that builds the tree!
-    JsonNode* parseValue() {
+    JsonNode* parseValue(int depth = 0) {
+        if(tokens.empty()){
+            throw std::runtime_error("Parser Error: El archivo está vacío o solo contiene espacios.");
+        }
+        
+        if(depth > MAX_DEPTH){
+            throw std::runtime_error("Exceeded maximum depth!");
+        }
         Token current = peek();
 
         if (current.type == TokenType::STRING) {
@@ -40,23 +49,23 @@ public:
             return arena.create<JsonNumber>(std::stod(std::string(current.text)));
         }
         else if (current.type == TokenType::BRACKET_OPEN) {
-            return parseArray(); // We will write this next
+            return parseArray(depth + 1); // We will write this next
         }
         else if (current.type == TokenType::CURLY_OPEN) {
-            return parseObject(); // We will write this next
+            return parseObject(depth + 1); // We will write this next
         }
 
         throw std::runtime_error("Parser Error: Unexpected token " + std::string(current.text));
     }
 
     // Helper method to parse Arrays
-    JsonNode* parseArray() {
+    JsonNode* parseArray(int depth = 0) {
         Token current = peek();
         if(current.type == TokenType::BRACKET_OPEN){
             advance();
             JsonArray* arrayNode = arena.create<JsonArray>();
             while(peek().type != TokenType::BRACKET_CLOSE && !isAtEnd()){
-                arrayNode->add(parseValue());
+                arrayNode->add(parseValue(depth + 1));
                 if(peek().type == TokenType::COMMA){
                     advance();
                 }
@@ -71,14 +80,14 @@ public:
         
 
     // Helper method to parse Objects
-    JsonNode* parseObject() {
+    JsonNode* parseObject(int depth = 0) {
         advance();
         JsonObject* objNode = arena.create<JsonObject>();
         while(peek().type != TokenType::CURLY_CLOSE && !isAtEnd()){
             std::string_view key = peek().text;
             advance();
             advance();
-            objNode->add(std::string(key), parseValue());
+            objNode->add(std::string(key), parseValue(depth + 1));
             if(peek().type == TokenType::COMMA){
                 advance();
             }
